@@ -9,65 +9,71 @@ async def load_modules(bot: Bot, dp: Dispatcher):
 
     module_list = []
 
-    # Поиск модулей
     for module_info in pkgutil.iter_modules(modules.__path__):
-
         module_name = module_info.name
 
         if module_name.startswith("_"):
             continue
 
-        full_name = f"modules.{module_name}"
-
         try:
-            module = importlib.import_module(full_name)
+            module = importlib.import_module(
+                f"modules.{module_name}"
+            )
 
             setup = getattr(module, "setup", None)
 
             if not callable(setup):
-                print(
-                    f"Модуль {module_name} пропущен: "
-                    "отсутствует функция setup"
-                )
+                print(f"Модуль {module_name} пропущен")
                 continue
 
             order = getattr(module, "order", 100)
 
             if isinstance(order, bool):
-                raise ValueError("order должен быть целым числом")
+                raise ValueError("order должен быть числом")
 
             order = int(order)
 
             module_list.append({
                 "name": module_name,
+                "module": module,
                 "setup": setup,
                 "order": order
             })
 
         except Exception as error:
-            print(f"Ошибка загрузки {module_name}: {error}")
+            print(f"Ошибка импорта {module_name}: {error}")
 
-    # Сортировка модулей
     module_list.sort(
-        key=lambda module: (
-            module["order"],
-            module["name"]
-        )
+        key=lambda x: (x["order"], x["name"])
     )
 
-    # Подключение модулей
-    for module in module_list:
+    menu_items = []
 
+    for item in module_list:
         try:
-            await module["setup"](bot, dp)
+            await item["setup"](bot, dp)
 
             print(
-                f"Модуль загружен: {module['name']} "
-                f"(order: {module['order']})"
+                f"Модуль загружен: {item['name']} "
+                f"(order: {item['order']})"
             )
+
+            items = getattr(
+                item["module"],
+                "MENU_ITEMS",
+                []
+            )
+
+            for menu_item in items:
+                menu_items.append({
+                    "text": menu_item["text"],
+                    "callback_data": menu_item["callback_data"],
+                    "order": item["order"]
+                })
 
         except Exception as error:
             print(
-                f"Ошибка запуска модуля "
-                f"{module['name']}: {error}"
+                f"Ошибка запуска {item['name']}: {error}"
             )
+
+    return menu_items
