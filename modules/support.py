@@ -1,16 +1,24 @@
-from aiogram import Bot, Dispatcher
-from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import CallbackQuery
 
 
 order = 3
 
+MENU_ITEMS = [
+    {
+        "text": "🆘 Поддержка",
+        "callback_data": "menu:support"
+    }
+]
+
 
 async def setup(bot: Bot, dp: Dispatcher):
 
-    @dp.message(Command("support"))
-    async def support_handler(message: Message):
+    @dp.callback_query(F.data == "menu:support")
+    async def support_handler(callback: CallbackQuery):
 
-        await message.answer(
+        await callback.message.answer(
             "Связаться с поддержкой: @support"
         )
+
+        await callback.answer()
