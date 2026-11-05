@@ -5,7 +5,11 @@ from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
 
 from config import BOT_TOKEN
 from core.loader import load_modules
@@ -24,42 +28,58 @@ def load_settings():
     )
 
     if not isinstance(welcome_text, str):
-        raise ValueError(
-            "welcome_text должен быть текстовой строкой"
-        )
+        raise ValueError("welcome_text должен быть строкой")
 
     return settings
 
 
+def build_menu(menu_items):
+    buttons = []
+
+    for item in menu_items:
+        buttons.append(
+            InlineKeyboardButton(
+                text=item["text"],
+                callback_data=item["callback_data"]
+            )
+        )
+
+    # По две кнопки в строке
+    keyboard = [
+        buttons[i:i + 2]
+        for i in range(0, len(buttons), 2)
+    ]
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
 async def main():
-
-    # Загружаем настройки
     settings = load_settings()
-
     welcome_text = settings["welcome_text"]
 
-    # Создаём бота и диспетчер
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
     try:
-        # Инициализация базы пользователей
         await init_db()
 
-        # Обработчик команды START
+        # Загружаем дополнительные модули
+        menu_items = await load_modules(bot, dp)
+
+        # Создаём меню
+        menu = build_menu(menu_items) if menu_items else None
+
         @dp.message(CommandStart())
         async def start_handler(message: Message):
-
             await register_user(bot, message.from_user)
 
-            await message.answer(welcome_text)
-
-        # Загрузка дополнительных модулей
-        await load_modules(bot, dp)
+            await message.answer(
+                welcome_text,
+                reply_markup=menu
+            )
 
         print("Бот успешно запущен!")
 
-        # Запуск бота
         await dp.start_polling(bot)
 
     finally:
