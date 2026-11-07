@@ -18,7 +18,7 @@ async def setup(bot: Bot, dp: Dispatcher):
     async def support_handler(callback: CallbackQuery):
 
         await callback.message.answer(
-            "У вас возникли вопросы связанные с регистрацией или желаете уточнить по поводу работы?/n/nПишите сюда - @kye707"
+            "У вас возникли вопросы связанные с регистрацией или желаете уточнить по поводу работы? Пишите сюда - @kye707"
         )
 
         await callback.answer()
