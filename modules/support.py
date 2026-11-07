@@ -6,7 +6,7 @@ order = 3
 
 MENU_ITEMS = [
     {
-        "text": "🆘 Поддержка",
+        "text": "Связь с менеджером",
         "callback_data": "menu:support"
     }
 ]
@@ -18,7 +18,7 @@ async def setup(bot: Bot, dp: Dispatcher):
     async def support_handler(callback: CallbackQuery):
 
         await callback.message.answer(
-            "Связаться с поддержкой: @support"
+            "У вас возникли вопросы связанные с регистрацией или желаете уточнить по поводу работы?/n/nПишите сюда - @kye707"
         )
 
         await callback.answer()
