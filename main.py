@@ -1,15 +1,16 @@
+
 import asyncio
 import json
 
 from pathlib import Path
 
-from aiogram.types import FSInputFile
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart
 from aiogram.types import (
     Message,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    FSInputFile
 )
 
 from config import BOT_TOKEN
@@ -66,26 +67,31 @@ async def main():
         menu = build_menu(menu_items) if menu_items else None
 
         @dp.message(CommandStart())
-async def start_handler(message: Message):
+        async def start_handler(message: Message):
+            await register_user(bot, message.from_user)
 
-    await register_user(bot, message.from_user)
+            if welcome_image:
+                image_path = Path(__file__).parent / welcome_image
 
-    if welcome_image:
-        image_path = Path(__file__).parent / welcome_image
+                if not image_path.is_file():
+                    await message.answer(
+                        "Ошибка: изображение не найдено."
+                    )
+                    return
 
-        photo = FSInputFile(image_path)
+                photo = FSInputFile(image_path)
 
-        await message.answer_photo(
-            photo=photo,
-            caption=welcome_text,
-            reply_markup=menu
-        )
+                await message.answer_photo(
+                    photo=photo,
+                    caption=welcome_text,
+                    reply_markup=menu
+                )
 
-    else:
-        await message.answer(
-            welcome_text,
-            reply_markup=menu
-        )
+            else:
+                await message.answer(
+                    welcome_text,
+                    reply_markup=menu
+                )
 
         print("Бот успешно запущен!")
 
