@@ -66,21 +66,26 @@ async def main():
         menu = build_menu(menu_items) if menu_items else None
 
         @dp.message(CommandStart())
-        async def start_handler(message: Message):
+async def start_handler(message: Message):
 
-            await register_user(bot, message.from_user)
+    await register_user(bot, message.from_user)
 
-            if welcome_image:
-                await message.answer_photo(
-                    photo=welcome_image,
-                    caption=welcome_text,
-                    reply_markup=menu
-                )
-            else:
-                await message.answer(
-                    welcome_text,
-                    reply_markup=menu
-                )
+    if welcome_image:
+        image_path = Path(__file__).parent / welcome_image
+
+        photo = FSInputFile(image_path)
+
+        await message.answer_photo(
+            photo=photo,
+            caption=welcome_text,
+            reply_markup=menu
+        )
+
+    else:
+        await message.answer(
+            welcome_text,
+            reply_markup=menu
+        )
 
         print("Бот успешно запущен!")
 
