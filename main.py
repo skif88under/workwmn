@@ -22,14 +22,6 @@ def load_settings():
     with open(settings_path, "r", encoding="utf-8") as file:
         settings = json.load(file)
 
-    welcome_text = settings.get(
-        "welcome_text",
-        "Привет! Добро пожаловать."
-    )
-
-    if not isinstance(welcome_text, str):
-        raise ValueError("welcome_text должен быть строкой")
-
     return settings
 
 
@@ -44,7 +36,6 @@ def build_menu(menu_items):
             )
         )
 
-    # По две кнопки в строке
     keyboard = [
         buttons[i:i + 2]
         for i in range(0, len(buttons), 2)
@@ -55,7 +46,13 @@ def build_menu(menu_items):
 
 async def main():
     settings = load_settings()
-    welcome_text = settings["welcome_text"]
+
+    welcome_text = settings.get(
+        "welcome_text",
+        "Привет! Добро пожаловать."
+    )
+
+    welcome_image = settings.get("welcome_image")
 
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
@@ -63,20 +60,26 @@ async def main():
     try:
         await init_db()
 
-        # Загружаем дополнительные модули
         menu_items = await load_modules(bot, dp)
 
-        # Создаём меню
         menu = build_menu(menu_items) if menu_items else None
 
         @dp.message(CommandStart())
         async def start_handler(message: Message):
+
             await register_user(bot, message.from_user)
 
-            await message.answer(
-                welcome_text,
-                reply_markup=menu
-            )
+            if welcome_image:
+                await message.answer_photo(
+                    photo=welcome_image,
+                    caption=welcome_text,
+                    reply_markup=menu
+                )
+            else:
+                await message.answer(
+                    welcome_text,
+                    reply_markup=menu
+                )
 
         print("Бот успешно запущен!")
 
