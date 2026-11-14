@@ -3,6 +3,7 @@ import json
 
 from pathlib import Path
 
+from aiogram.types import FSInputFile
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart
 from aiogram.types import (
