@@ -18,7 +18,7 @@ async def setup(bot: Bot, dp: Dispatcher):
     async def support_handler(callback: CallbackQuery):
 
         await callback.message.answer(
-            "Вакансии:/n- Купер/n📌 https://clck.ru/3Wiym2/n- Яндекс/n📌 https://clck.ru/3Wiymv/n/n"
+            "Вакансии:\n- Купер\n📌 https://clck.ru/3Wiym2\n- Яндекс\n📌 https://clck.ru/3Wiymv\n\n"
         )
 
         await callback.answer()
