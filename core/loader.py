@@ -65,11 +65,22 @@ async def load_modules(bot: Bot, dp: Dispatcher):
             )
 
             for menu_item in items:
-                menu_items.append({
+                menu_entry = {
                     "text": menu_item["text"],
-                    "callback_data": menu_item["callback_data"],
                     "order": item["order"]
-                })
+                }
+
+                if menu_item.get("url"):
+                    menu_entry["url"] = menu_item["url"]
+                elif menu_item.get("callback_data"):
+                    menu_entry["callback_data"] = menu_item["callback_data"]
+                else:
+                    raise ValueError(
+                        f"У кнопки модуля {item['name']} "
+                        "должен быть url или callback_data"
+                    )
+
+                menu_items.append(menu_entry)
 
         except Exception as error:
             print(
