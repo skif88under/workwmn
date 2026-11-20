@@ -1,4 +1,3 @@
-
 import asyncio
 import json
 
@@ -31,12 +30,18 @@ def build_menu(menu_items):
     buttons = []
 
     for item in menu_items:
-        buttons.append(
-            InlineKeyboardButton(
+        if item.get("url"):
+            button = InlineKeyboardButton(
+                text=item["text"],
+                url=item["url"]
+            )
+        else:
+            button = InlineKeyboardButton(
                 text=item["text"],
                 callback_data=item["callback_data"]
             )
-        )
+
+        buttons.append(button)
 
     keyboard = [
         buttons[i:i + 2]
