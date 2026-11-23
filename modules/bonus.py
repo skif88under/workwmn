@@ -2,7 +2,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import CallbackQuery
 
 
-order = 4
+order = 3
 
 MENU_ITEMS = [
     {
