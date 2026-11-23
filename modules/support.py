@@ -1,7 +1,7 @@
 from aiogram import Bot, Dispatcher
 
 
-order = 3
+order = 1
 
 MENU_ITEMS = [
     {
