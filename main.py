@@ -41,14 +41,9 @@ def build_menu(menu_items):
                 callback_data=item["callback_data"]
             )
 
-        buttons.append(button)
+        buttons.append([button])
 
-    keyboard = [
-        buttons[i:i + 2]
-        for i in range(0, len(buttons), 2)
-    ]
-
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 async def main():
