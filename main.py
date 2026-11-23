@@ -105,11 +105,8 @@ async def main():
                     reply_markup=menu
                 )
 
-        # Удаляем возможный webhook: long polling и webhook нельзя
-        # использовать одновременно для одного токена.
-        logger.info("Проверка и отключение webhook перед polling...")
-        await bot.delete_webhook()
-
+        # Не вызываем delete_webhook при каждом старте:
+        # этот лишний запрос тоже может попасть под Telegram flood control.
         logger.info("Модули загружены. Запускаю Telegram polling...")
 
         while True:
