@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.filters import CommandStart
 from aiogram.types import (
     Message,
@@ -93,9 +94,19 @@ async def main():
                     reply_markup=menu
                 )
 
-        print("Бот успешно запущен!")
+        print("Бот подготовлен. Запускаю polling...")
 
-        await dp.start_polling(bot)
+        while True:
+            try:
+                await dp.start_polling(bot)
+                break
+            except TelegramRetryAfter as error:
+                delay = error.retry_after + 2
+                print(
+                    f"Telegram ограничил частоту запросов. "
+                    f"Повторный запуск через {delay} сек."
+                )
+                await asyncio.sleep(delay)
 
     finally:
         await bot.session.close()
