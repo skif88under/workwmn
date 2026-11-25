@@ -84,8 +84,9 @@ async def notification_worker(bot: Bot):
                 notification_id
             )
 
-            # Не более одного уведомления примерно раз в 3 секунды.
-            await asyncio.sleep(3)
+            # В группах Telegram действует лимит около 20 сообщений в минуту.
+            # Интервал 3.2 секунды оставляет небольшой запас.
+            await asyncio.sleep(3.2)
 
         except TelegramRetryAfter as error:
             delay = error.retry_after + 2
