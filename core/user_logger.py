@@ -1,10 +1,7 @@
 import aiosqlite
 
 from pathlib import Path
-from aiogram import Bot
 from aiogram.types import User
-
-from config import LOG_CHAT_ID
 
 
 DB_PATH = Path(__file__).resolve().parent.parent / "users.db"
@@ -32,6 +29,15 @@ async def init_db():
                 "ALTER TABLE users ADD COLUMN welcome_message_id INTEGER"
             )
 
+        # Очередь уведомлений сохраняется в SQLite и переживает перезапуск бота.
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS notification_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         await db.commit()
 
 
@@ -55,19 +61,29 @@ async def save_welcome_message_id(user_id: int, message_id: int):
         await db.commit()
 
 
-async def register_user(bot: Bot, user: User):
-    async with aiosqlite.connect(DB_PATH) as db:
+async def register_user(user: User):
+    username = f"@{user.username}" if user.username else "Отсутствует"
+    first_name = user.first_name or "Не указано"
+    last_name = user.last_name or ""
 
+    notification_text = (
+        "🆕 Новый пользователь запустил бота\n\n"
+        f"👤 Имя: {first_name} {last_name}\n"
+        f"🔗 Username: {username}\n"
+        f"🆔 ID: {user.id}"
+    )
+
+    async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             "SELECT user_id FROM users WHERE user_id = ?",
             (user.id,)
         )
-
         exists = await cursor.fetchone()
 
         if exists:
             return False
 
+        # Регистрация и постановка уведомления в очередь — одна транзакция.
         await db.execute("""
             INSERT INTO users (
                 user_id,
@@ -83,23 +99,28 @@ async def register_user(bot: Bot, user: User):
             user.last_name
         ))
 
+        await db.execute(
+            "INSERT INTO notification_queue (message_text) VALUES (?)",
+            (notification_text,)
+        )
+
         await db.commit()
 
-    username = f"@{user.username}" if user.username else "Отсутствует"
-    first_name = user.first_name or "Не указано"
-    last_name = user.last_name or ""
-
-    text = (
-        "🆕 Новый пользователь запустил бота\n\n"
-        f"👤 Имя: {first_name} {last_name}\n"
-        f"🔗 Username: {username}\n"
-        f"🆔 ID: {user.id}"
-    )
-
-    try:
-        await bot.send_message(LOG_CHAT_ID, text)
-
-    except Exception as error:
-        print(f"Ошибка отправки уведомления: {error}")
-
     return True
+
+
+async def get_next_notification():
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "SELECT id, message_text FROM notification_queue ORDER BY id LIMIT 1"
+        )
+        return await cursor.fetchone()
+
+
+async def delete_notification(notification_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM notification_queue WHERE id = ?",
+            (notification_id,)
+        )
+        await db.commit()
