@@ -18,10 +18,40 @@ async def init_db():
                 username TEXT,
                 first_name TEXT,
                 last_name TEXT,
-                registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                welcome_message_id INTEGER
             )
         """)
 
+        # Добавляем поле существующим базам данных без потери пользователей.
+        cursor = await db.execute("PRAGMA table_info(users)")
+        columns = {row[1] for row in await cursor.fetchall()}
+
+        if "welcome_message_id" not in columns:
+            await db.execute(
+                "ALTER TABLE users ADD COLUMN welcome_message_id INTEGER"
+            )
+
+        await db.commit()
+
+
+async def get_welcome_message_id(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "SELECT welcome_message_id FROM users WHERE user_id = ?",
+            (user_id,)
+        )
+        row = await cursor.fetchone()
+
+    return row[0] if row else None
+
+
+async def save_welcome_message_id(user_id: int, message_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET welcome_message_id = ? WHERE user_id = ?",
+            (message_id, user_id)
+        )
         await db.commit()
 
 
