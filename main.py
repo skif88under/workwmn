@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher
-from aiogram.exceptions import TelegramRetryAfter
+from aiogram.exceptions import TelegramRetryAfter, TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.types import (
     Message,
@@ -15,8 +15,15 @@ from aiogram.types import (
 )
 
 from config import BOT_TOKEN
-from core.loader import load_modules
-from core.user_logger import init_db, register_user
+from core.loader import (
+    load_modules,
+    )
+from core.user_logger import (
+    init_db,
+    register_user,
+    get_welcome_message_id,
+    save_welcome_message_id,
+)
 
 
 logging.basicConfig(
@@ -79,31 +86,61 @@ async def main():
 
         @dp.message(CommandStart())
         async def start_handler(message: Message):
-            logger.info("Получена команда /start от user_id=%s", message.from_user.id)
+            user_id = message.from_user.id
+            logger.info("Получена команда /start от user_id=%s", user_id)
+
             await register_user(bot, message.from_user)
+
+            # Если приветствие уже отправлялось, копируем его в чат.
+            # Так повторный /start не загружает изображение заново.
+            saved_message_id = await get_welcome_message_id(user_id)
+
+            if saved_message_id:
+                try:
+                    copied_message = await bot.copy_message(
+                        chat_id=message.chat.id,
+                        from_chat_id=message.chat.id,
+                        message_id=saved_message_id,
+                        reply_markup=menu
+                    )
+                    # Сохраняем ID свежей копии: она станет актуальным приветствием.
+                    await save_welcome_message_id(
+                        user_id,
+                        copied_message.message_id
+                    )
+                    return
+
+                except TelegramBadRequest as error:
+                    logger.warning(
+                        "Сохранённое приветствие недоступно для user_id=%s: %s. "
+                        "Отправляю новое.",
+                        user_id,
+                        error
+                    )
+
+            # Первое приветствие или восстановление удалённого сообщения.
+            sent_message = None
 
             if welcome_image:
                 image_path = Path(__file__).parent / welcome_image
 
-                if not image_path.is_file():
-                    await message.answer(
-                        "Ошибка: изображение не найдено."
+                if image_path.is_file():
+                    photo = FSInputFile(image_path)
+                    sent_message = await message.answer_photo(
+                        photo=photo,
+                        caption=welcome_text,
+                        reply_markup=menu
                     )
-                    return
+                else:
+                    logger.error("Изображение приветствия не найдено: %s", image_path)
 
-                photo = FSInputFile(image_path)
-
-                await message.answer_photo(
-                    photo=photo,
-                    caption=welcome_text,
-                    reply_markup=menu
-                )
-
-            else:
-                await message.answer(
+            if sent_message is None:
+                sent_message = await message.answer(
                     welcome_text,
                     reply_markup=menu
                 )
+
+            await save_welcome_message_id(user_id, sent_message.message_id)
 
         # Не вызываем delete_webhook при каждом старте:
         # этот лишний запрос тоже может попасть под Telegram flood control.
