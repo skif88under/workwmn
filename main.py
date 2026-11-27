@@ -19,8 +19,6 @@ from core.loader import load_modules
 from core.user_logger import (
     init_db,
     register_user,
-    get_welcome_message_id,
-    save_welcome_message_id,
     get_next_notification,
     delete_notification,
 )
@@ -142,55 +140,29 @@ async def main():
 
             await register_user(message.from_user)
 
-            # Если приветствие уже отправлялось, копируем его в чат.
-            # Так повторный /start не загружает изображение заново.
-            saved_message_id = await get_welcome_message_id(user_id)
-
-            if saved_message_id:
-                try:
-                    copied_message = await bot.copy_message(
-                        chat_id=message.chat.id,
-                        from_chat_id=message.chat.id,
-                        message_id=saved_message_id,
-                        reply_markup=menu
-                    )
-                    await save_welcome_message_id(
-                        user_id,
-                        copied_message.message_id
-                    )
-                    return
-
-                except TelegramBadRequest as error:
-                    logger.warning(
-                        "Сохранённое приветствие недоступно для user_id=%s: %s. "
-                        "Отправляю новое.",
-                        user_id,
-                        error
-                    )
-
-            # Первое приветствие или восстановление удалённого сообщения.
-            sent_message = None
-
+            # При каждом /start отправляем новое приветствие.
+            # Регистрация и уведомление в чат БД остаются только для новых пользователей.
             if welcome_image:
                 image_path = Path(__file__).parent / welcome_image
 
                 if image_path.is_file():
                     photo = FSInputFile(image_path)
-                    sent_message = await message.answer_photo(
+                    await message.answer_photo(
                         photo=photo,
                         caption=welcome_text,
                         reply_markup=menu
                     )
                 else:
                     logger.error("Изображение приветствия не найдено: %s", image_path)
-
-            if sent_message is None:
-                sent_message = await message.answer(
+                    await message.answer(
+                        welcome_text,
+                        reply_markup=menu
+                    )
+            else:
+                await message.answer(
                     welcome_text,
                     reply_markup=menu
                 )
-
-            await save_welcome_message_id(user_id, sent_message.message_id)
 
         # Не вызываем delete_webhook при каждом старте.
         logger.info("Модули загружены. Запускаю Telegram polling...")
