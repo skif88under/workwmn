@@ -48,6 +48,7 @@ async def init_broadcast_db():
         await db.execute("""
             CREATE TABLE IF NOT EXISTS broadcast_state (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
+                next_run_at TEXT,
                 campaign_active INTEGER NOT NULL DEFAULT 0,
                 sent_count INTEGER NOT NULL DEFAULT 0,
                 failed_count INTEGER NOT NULL DEFAULT 0,
@@ -58,7 +59,8 @@ async def init_broadcast_db():
         # автоматической рассылки.
         cursor = await db.execute("PRAGMA table_info(broadcast_state)")
         columns = {row[1] for row in await cursor.fetchall()}
-        if "total_count" not in columns:
+        legacy_scheduler_schema = "total_count" not in columns
+        if legacy_scheduler_schema:
             await db.execute(
                 "ALTER TABLE broadcast_state ADD COLUMN total_count INTEGER NOT NULL DEFAULT 0"
             )
@@ -75,6 +77,14 @@ async def init_broadcast_db():
             )
             VALUES (1, datetime('now'), 0, 0, 0, 0)
         """)
+        # Не продолжаем автоматически созданную старой версией кампанию:
+        # теперь рассылка запускается только вручную администратором.
+        if legacy_scheduler_schema:
+            await db.execute("DELETE FROM broadcast_queue")
+            await db.execute(
+                "UPDATE broadcast_state SET campaign_active = 0 WHERE id = 1"
+            )
+
         await db.commit()
 
 
