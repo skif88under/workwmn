@@ -54,14 +54,26 @@ async def init_broadcast_db():
                 total_count INTEGER NOT NULL DEFAULT 0
             )
         """)
+        # Совместимость с таблицей, созданной предыдущей версией
+        # автоматической рассылки.
+        cursor = await db.execute("PRAGMA table_info(broadcast_state)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "total_count" not in columns:
+            await db.execute(
+                "ALTER TABLE broadcast_state ADD COLUMN total_count INTEGER NOT NULL DEFAULT 0"
+            )
+
         await db.execute("""
             CREATE TABLE IF NOT EXISTS broadcast_queue (
                 user_id INTEGER PRIMARY KEY
             )
         """)
+        # next_run_at оставлен для совместимости со старой схемой SQLite.
         await db.execute("""
-            INSERT OR IGNORE INTO broadcast_state (id, campaign_active)
-            VALUES (1, 0)
+            INSERT OR IGNORE INTO broadcast_state (
+                id, next_run_at, campaign_active, sent_count, failed_count, total_count
+            )
+            VALUES (1, datetime('now'), 0, 0, 0, 0)
         """)
         await db.commit()
 
