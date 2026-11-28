@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import aiosqlite
-from aiogram import Bot
+from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -199,3 +199,8 @@ async def run_broadcast_worker(bot: Bot):
         except Exception:
             logger.exception("Ошибка планировщика рассылки; повтор через 30 секунд")
             await asyncio.sleep(CHECK_INTERVAL_SECONDS)
+
+
+async def setup(bot: Bot, dp: Dispatcher):
+    # Worker запускается из main.py, чтобы корректно завершаться при остановке бота.
+    pass
