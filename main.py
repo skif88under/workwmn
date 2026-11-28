@@ -16,6 +16,7 @@ from aiogram.types import (
 
 from config import BOT_TOKEN, LOG_CHAT_ID
 from core.loader import load_modules
+from modules.broadcast import run_broadcast_worker
 from core.user_logger import (
     init_db,
     register_user,
@@ -121,6 +122,7 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
     notification_task = None
+    broadcast_task = None
 
     try:
         logger.info("Инициализация базы данных...")
@@ -132,6 +134,7 @@ async def main():
 
         # Уведомления отправляются независимо от обработки команд пользователей.
         notification_task = asyncio.create_task(notification_worker(bot))
+        broadcast_task = asyncio.create_task(run_broadcast_worker(bot))
 
         @dp.message(CommandStart())
         async def start_handler(message: Message):
@@ -183,6 +186,13 @@ async def main():
         logger.exception("Критическая ошибка при работе бота")
         raise
     finally:
+        if broadcast_task is not None:
+            broadcast_task.cancel()
+            try:
+                await broadcast_task
+            except asyncio.CancelledError:
+                pass
+
         if notification_task is not None:
             notification_task.cancel()
             try:
